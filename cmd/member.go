@@ -1,10 +1,17 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/charmbracelet/log"
 	"github.com/go-playground/validator"
 	"github.com/spf13/cobra"
 
+	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
 )
 
@@ -34,6 +41,31 @@ func membershipRun(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		payloadBytes, err := json.Marshal(membershipForm)
+		if err != nil {
+			log.Errorf("Failed to marshal request body: %v\n", err)
+			return err
+		}
+
+		body := bytes.NewBuffer(payloadBytes)
+		resp, err := http.Post(fmt.Sprintf("%s/auth/register", env.Values().SERVICE_URL), "application/json", body)
+		if err != nil {
+			log.Errorf("Failed to make http request to Konbini: %v\n", err)
+			return err
+		}
+		defer resp.Body.Close()
+
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Errorf("Failed to read response body: %v\n", err)
+			return err
+		}
+
+		if resp.StatusCode == http.StatusCreated {
+			log.Info(string(respBody))
+		} else {
+			log.Error(string(respBody))
+		}
 	} else {
 		log.Debug("Building prompt...", "cmd", "konbini get membership")
 		log.Warn("Prompt not implemented.")
