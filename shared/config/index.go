@@ -11,7 +11,6 @@ import (
 const (
 	CONFIG_DIR  = "konbini"
 	CONFIG_NAME = "config.yaml"
-	CONFIG_TYPE = "yaml"
 )
 
 type AuthConfig struct {
@@ -25,7 +24,6 @@ type AppConfig struct {
 
 func GetAppConfig() (*AppConfig, error) {
 	viper.SetConfigName(CONFIG_NAME)
-	viper.SetConfigType(CONFIG_TYPE)
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		log.Errorf("Failed to get user configuration directory: %v\n", err)
@@ -65,6 +63,20 @@ func CreateAppConfig() error {
 			return err
 		}
 		log.Debug("Application configuration directory created.")
+	}
+
+	configFilePath := filepath.Join(appConfigDir, CONFIG_NAME)
+	_, err = os.Stat(configFilePath)
+	if os.IsNotExist(err) {
+		configContent := `auth:
+    access_token: ""
+    refresh_token: ""`
+		err = os.WriteFile(configFilePath, []byte(configContent), 0644)
+		if err != nil {
+			log.Errorf("Failed to create default config file: %v\n", err)
+			return err
+		}
+		log.Debug("Application configuration file created.")
 	}
 
 	return nil
