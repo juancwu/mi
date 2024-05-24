@@ -30,7 +30,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&prompt, "prompt", false, "open interactive prompt")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug logs")
 	rootCmd.AddCommand(getCmd)
-	rootCmd.AddCommand(scanCmd)
 }
 
 func globalFlagSetup(cmd *cobra.Command, args []string) {
