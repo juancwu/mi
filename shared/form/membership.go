@@ -6,3 +6,8 @@ type MembershipForm struct {
 	FirstName string `json:"first_name" validate:"required,alpha" errormgs:"First name is required"`
 	LastName  string `json:"last_name" validate:"required,alpha" errormgs:"Last name is required"`
 }
+
+type MembershipScanForm struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
