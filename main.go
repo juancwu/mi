@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/juancwu/konbini-cli/cmd"
 )
 

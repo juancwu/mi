@@ -60,8 +60,6 @@ func scanRun(cmd *cobra.Command, args []string) error {
 			log.Errorf("Failed to read response body: %v\n", err)
 			return err
 		}
-
-		log.Infof("Response Body: %v\n", respData)
 	} else {
 		log.Errorf("Failed to scan credentials.")
 	}
