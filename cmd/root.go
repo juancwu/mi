@@ -32,7 +32,7 @@ func Init() {
 	rootCmd.AddCommand(getCmd)
 
 	// cook command
-	cookCmd.AddCommand(bentoCmd)
+	cookCmd.AddCommand(createBentoCmd)
 	rootCmd.AddCommand(cookCmd)
 }
 

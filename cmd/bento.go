@@ -18,14 +18,14 @@ import (
 	"golang.org/x/term"
 )
 
-var bentoCmd = &cobra.Command{
+var createBentoCmd = &cobra.Command{
 	Use:   "bento [name]",
 	Short: "Commands to manage personal bentos.",
 	Args:  cobra.ExactArgs(1),
-	Run:   bentoRun,
+	Run:   createBentoRun,
 }
 
-func bentoRun(cmd *cobra.Command, args []string) {
+func createBentoRun(cmd *cobra.Command, args []string) {
 	var email, password string
 	// get email
 	fmt.Print("Enter email: ")
