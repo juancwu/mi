@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/charmbracelet/log"
 	"github.com/go-playground/validator"
 	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
+	"golang.org/x/term"
 )
 
 // returns the access token
@@ -55,4 +57,26 @@ func Auth(email, password string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func PromptCredentials() (*form.MembershipScanForm, error) {
+	credsFrom := new(form.MembershipScanForm)
+	fmt.Print("Enter email: ")
+	fmt.Scanln(&credsFrom.Email)
+
+	fmt.Print("Enter password: ")
+	pwdBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Println()
+	if err != nil {
+		return nil, err
+	}
+	credsFrom.Password = string(pwdBytes)
+
+	validate := validator.New()
+	err = validate.Struct(credsFrom)
+	if err != nil {
+		return nil, err
+	}
+
+	return credsFrom, nil
 }

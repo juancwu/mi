@@ -10,12 +10,10 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/log"
-	"github.com/go-playground/validator"
 	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
 	"github.com/juancwu/konbini-cli/utils"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
 
 var createBentoCmd = &cobra.Command{
@@ -26,25 +24,9 @@ var createBentoCmd = &cobra.Command{
 }
 
 func createBentoRun(cmd *cobra.Command, args []string) {
-	var email, password string
-	// get email
-	fmt.Print("Enter email: ")
-	fmt.Scanln(&email)
-
-	// get password
-	fmt.Print("Enter password: ")
-	passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
-	fmt.Println()
+	creds, err := utils.PromptCredentials()
 	if err != nil {
-		log.Errorf("Failed to read password: %v\n", err)
-		return
-	}
-	password = string(passwordBytes)
-
-	// validate inputs
-	validate := validator.New()
-	if err := validate.Struct(form.MembershipScanForm{Email: email, Password: password}); err != nil {
-		log.Errorf("One or more fields are invalid/missing: %v\n", err)
+		log.Errorf("Failed to get credentials from prompt: %v\n", err)
 		return
 	}
 
@@ -62,7 +44,7 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 
 	// authenticate user
 	log.Info("Authenticating...")
-	accessToken, err := utils.Auth(email, password)
+	accessToken, err := utils.Auth(creds.Email, creds.Password)
 	if err != nil {
 		log.Errorf("Failed to authenticate user: %v\n", err)
 		return
