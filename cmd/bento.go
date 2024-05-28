@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -182,6 +183,34 @@ func getBentoRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Errorf("Failed to get bento keys: %v\n", err)
 		return
+	}
+
+	// check if there is an existing .env file and prompt for confirmation if there is
+	_, err = os.Stat(".env")
+	if err != nil && !os.IsNotExist(err) {
+		var confirmation string
+		log.Warnf("Failed to check for existing .env file. Continueing will overwrite any existing .env file in the current working directory. Continue? (y/n) ")
+		_, err := fmt.Scanln(&confirmation)
+		if err != nil {
+			log.Errorf("Failed to read confirmation: %v\n", err)
+			log.Error("ABORT")
+			return
+		}
+		if strings.ToLower(confirmation) != "y" {
+			return
+		}
+	} else if err == nil {
+		var confirmation string
+		log.Warnf("Existing .env file found. Do you want to overwrite it? (y/n) ")
+		_, err := fmt.Scanln(&confirmation)
+		if err != nil {
+			log.Errorf("Failed to read confirmation: %v\n", err)
+			log.Error("ABORT")
+			return
+		}
+		if strings.ToLower(confirmation) != "y" {
+			return
+		}
 	}
 
 	log.Info("Authenticating...")
