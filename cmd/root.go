@@ -31,6 +31,7 @@ func Init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug logs")
 
 	getCmd.AddCommand(getBentoCmd)
+	getCmd.AddCommand(listBentosCmd)
 	rootCmd.AddCommand(getCmd)
 
 	// cook command
