@@ -29,6 +29,8 @@ func Init() {
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
 	rootCmd.PersistentFlags().BoolVar(&prompt, "prompt", false, "open interactive prompt")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug logs")
+
+	getCmd.AddCommand(getBentoCmd)
 	rootCmd.AddCommand(getCmd)
 
 	// cook command

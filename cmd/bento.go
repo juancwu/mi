@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/juancwu/konbini-cli/shared/form"
@@ -87,10 +89,12 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 	}
 
 	log.Info("Gathering bento ingridients...")
+	content := base64.StdEncoding.EncodeToString(encrypted)
+	log.Info(content)
 	bentoForm := form.BentoForm{
 		Name:      args[0],
 		PublicKey: string(publicPEM),
-		Content:   string(encrypted),
+		Content:   base64.StdEncoding.EncodeToString(encrypted),
 	}
 	reqBodyBytes, err := json.Marshal(bentoForm)
 	if err != nil {
@@ -146,5 +150,93 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 			return
 		}
 		log.Errorf("Failed to cook bento (code: %d): %s\n", resp.StatusCode, string(errMsgBytes))
+	}
+}
+
+var getBentoCmd = &cobra.Command{
+	Use:   "bento",
+	Short: "Gets a bento based on the .konbini.yaml file.",
+	Run:   getBentoRun,
+}
+
+type PersonalBento struct {
+	Id        string    `json:"id"`
+	OwnerId   string    `json:"owner_id"`
+	Name      string    `json:"name"`
+	Content   string    `json:"content"`
+	PubKey    string    `json:"pub_key"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func getBentoRun(cmd *cobra.Command, args []string) {
+	log.Infof("Loading bento configuration from '%s'", cfgFilePath)
+	bentoConfig, err := utils.GetBentoConfig(cfgFilePath)
+	if err != nil {
+		log.Errorf("Failed to get bento config: %v\n", err)
+		return
+	}
+
+	log.Info("Getting bento keys...")
+	keys, err := utils.LoadKeys(bentoConfig)
+	if err != nil {
+		log.Errorf("Failed to get bento keys: %v\n", err)
+		return
+	}
+
+	log.Info("Authenticating...")
+	hashed, signature, err := utils.GetSignature(keys)
+	if err != nil {
+		log.Errorf("Failed to get authentication signature: %v\n", err)
+		return
+	}
+
+	log.Info("Preparing bento order...")
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/bento/personal/%s", utils.GetServiceURL(), bentoConfig.BentoId), nil)
+	if err != nil {
+		log.Errorf("Failed to prepare bento order: %v\n", err)
+		return
+	}
+	req.Header.Set("X-Bento-Hashed", base64.StdEncoding.EncodeToString(hashed))
+	req.Header.Set("X-Bento-Signature", base64.StdEncoding.EncodeToString(signature))
+
+	log.Info("Placing bento order...")
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("Failed to place bento order: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Failed to read response body: %v\n", err)
+		return
+	}
+	if resp.StatusCode == http.StatusOK {
+		var bento PersonalBento
+		err = json.Unmarshal(respBodyBytes, &bento)
+		if err != nil {
+			log.Errorf("Failed to unmarshal response body: %v\n", err)
+			return
+		}
+		log.Info("Got bento! Opening bento...")
+
+		// open bento by decrypting the content
+		plaintext, err := utils.Decrypt(bento.Content, keys)
+		if err != nil {
+			log.Errorf("Failed to decrypt bento: %v\n", err)
+			return
+		}
+
+		log.Info("Saving bento into disk...")
+		err = os.WriteFile(".env", plaintext, 0644)
+		if err != nil {
+			log.Errorf("Failed to save bento to disk: %v\n", err)
+			return
+		}
+	} else {
+		log.Errorf("Error (%d): %s\n", resp.StatusCode, string(respBodyBytes))
 	}
 }
