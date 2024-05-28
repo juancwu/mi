@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/charmbracelet/log"
-	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
 	"github.com/juancwu/konbini-cli/utils"
 	"github.com/spf13/cobra"
@@ -101,7 +100,7 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 
 	// make bento request
 	log.Info("Preheating pans...")
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/bento/personal/new", env.Values().SERVICE_URL), bytes.NewBuffer(reqBodyBytes))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/bento/personal/new", utils.GetServiceURL()), bytes.NewBuffer(reqBodyBytes))
 	if err != nil {
 		log.Errorf("Failed to preheat pans: %v\n", err)
 		return

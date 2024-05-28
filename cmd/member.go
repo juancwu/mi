@@ -11,8 +11,8 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/spf13/cobra"
 
-	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
+	"github.com/juancwu/konbini-cli/utils"
 )
 
 var membershipCmd = &cobra.Command{
@@ -48,7 +48,7 @@ func membershipRun(cmd *cobra.Command, args []string) error {
 		}
 
 		body := bytes.NewBuffer(payloadBytes)
-		resp, err := http.Post(fmt.Sprintf("%s/auth/register", env.Values().SERVICE_URL), "application/json", body)
+		resp, err := http.Post(fmt.Sprintf("%s/auth/register", utils.GetServiceURL()), "application/json", body)
 		if err != nil {
 			log.Errorf("Failed to make http request to Konbini: %v\n", err)
 			return err

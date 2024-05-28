@@ -11,7 +11,6 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/go-playground/validator"
-	"github.com/juancwu/konbini-cli/shared/env"
 	"github.com/juancwu/konbini-cli/shared/form"
 	"golang.org/x/term"
 )
@@ -36,7 +35,7 @@ func Auth(email, password string) (string, error) {
 	}
 
 	body := bytes.NewBuffer(payloadBytes)
-	resp, err := http.Post(fmt.Sprintf("%s/auth", env.Values().SERVICE_URL), "application/json", body)
+	resp, err := http.Post(fmt.Sprintf("%s/auth", GetServiceURL()), "application/json", body)
 	if err != nil {
 		log.Errorf("Failed to make http request to Konbini: %v\n", err)
 		return "", err
