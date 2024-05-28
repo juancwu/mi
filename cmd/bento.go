@@ -269,3 +269,75 @@ func getBentoRun(cmd *cobra.Command, args []string) {
 		log.Errorf("Error (%d): %s\n", resp.StatusCode, string(respBodyBytes))
 	}
 }
+
+var listBentosCmd = &cobra.Command{
+	Use:   "bentos",
+	Short: "Get a list of bentos stored in Konbini.",
+	Long:  "Get a list of bentos stored in Konbini showing id, name, created at, and updated at.",
+	Run:   listBentosRun,
+}
+
+type PersonalBentoListItem struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+func listBentosRun(cmd *cobra.Command, args []string) {
+	// get credentials
+	creds, err := utils.PromptCredentials()
+	if err != nil {
+		log.Errorf("Failed to get credentials: %v\n", err)
+		return
+	}
+
+	// get access token
+	log.Info("Authentication...")
+	token, err := utils.Auth(creds.Email, creds.Password)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	// make request to get list of bentos
+	log.Info("Preparing order...")
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/bento/personal/list", utils.GetServiceURL()), nil)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	log.Info("Placing order...")
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var data []PersonalBentoListItem
+		err = json.Unmarshal(respBodyBytes, &data)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		prettyJson, err := json.MarshalIndent(data, "", "   ")
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		log.Print(string(prettyJson))
+	} else {
+		log.Errorf("Failed to get list of bentos: %s\n", string(respBodyBytes))
+	}
+}
