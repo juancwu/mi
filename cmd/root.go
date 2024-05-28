@@ -49,6 +49,10 @@ func rootRun(cmd *cobra.Command, args []string) {
 	if verbose {
 		log.Info("Arguments", "verbose", verbose, "config", cfgFilePath)
 	}
+	// show help message
+	if len(args) == 0 {
+		cmd.Help()
+	}
 }
 
 func Execute() {
