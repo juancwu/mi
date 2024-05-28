@@ -19,7 +19,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:              "konbini",
 	Short:            "Konbini is a (convenient store) to store secrets (bentos) for your projects securely but easily accessible.",
-	Version:          "0.0.1",
+	Version:          "0.0.2",
 	Run:              rootRun,
 	PersistentPreRun: globalFlagSetup,
 }

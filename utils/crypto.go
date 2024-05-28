@@ -88,9 +88,23 @@ func LoadKeys(BentoConfig *BentoConfig) (*Keys, error) {
 }
 
 func Encrypt(data []byte, keys *Keys) ([]byte, error) {
-	encrypted, err := rsa.EncryptPKCS1v15(rand.Reader, keys.Public, data)
-	if err != nil {
-		return nil, err
+	label := []byte("")
+	hash := sha256.New()
+	size := len(data)
+	step := keys.Public.Size() - 2*hash.Size() - 2
+	var encrypted []byte
+	for start := 0; start < size; start += step {
+		finish := start + step
+		if finish > size {
+			finish = size
+		}
+
+		block, err := rsa.EncryptOAEP(hash, rand.Reader, keys.Public, data[start:finish], label)
+		if err != nil {
+			return nil, err
+		}
+
+		encrypted = append(encrypted, block...)
 	}
 	return encrypted, nil
 }
@@ -102,11 +116,26 @@ func Decrypt(data string, keys *Keys) ([]byte, error) {
 		return nil, err
 	}
 
-	plainContext, err := rsa.DecryptPKCS1v15(rand.Reader, keys.Private, decodedBytes)
-	if err != nil {
-		return nil, err
+	label := []byte("")
+	hash := sha256.New()
+	size := len(decodedBytes)
+	step := keys.Private.Size()
+	var decrypted []byte
+	for start := 0; start < size; start += step {
+		finish := start + step
+		if finish > size {
+			finish = size
+		}
+
+		block, err := rsa.DecryptOAEP(hash, rand.Reader, keys.Private, decodedBytes[start:finish], label)
+		if err != nil {
+			return nil, err
+		}
+
+		decrypted = append(decrypted, block...)
 	}
-	return plainContext, nil
+
+	return decrypted, nil
 }
 
 func GetSignature(keys *Keys) ([]byte, []byte, error) {
