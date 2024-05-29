@@ -24,6 +24,10 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: globalFlagSetup,
 }
 
+var deleteCmd = &cobra.Command{
+	Use: "delete",
+}
+
 func Init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFilePath, "config", DEFAULT_CFG_FILE_PATH, "config file (default root directory .konbini.yml)")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
@@ -33,6 +37,9 @@ func Init() {
 	getCmd.AddCommand(getBentoCmd)
 	getCmd.AddCommand(listBentosCmd)
 	rootCmd.AddCommand(getCmd)
+
+	deleteCmd.AddCommand(deleteBentoCmd)
+	rootCmd.AddCommand(deleteCmd)
 
 	// cook command
 	cookCmd.AddCommand(createBentoCmd)

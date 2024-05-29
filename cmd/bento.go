@@ -341,3 +341,70 @@ func listBentosRun(cmd *cobra.Command, args []string) {
 		log.Errorf("Failed to get list of bentos: %s\n", string(respBodyBytes))
 	}
 }
+
+var deleteBentoCmd = &cobra.Command{
+	Use:   "bento",
+	Short: "Deletes a personal bento",
+	Run:   runDeteleBentoCmd,
+}
+
+func runDeteleBentoCmd(cmd *cobra.Command, args []string) {
+	cfg, err := utils.GetBentoConfig(cfgFilePath)
+	if err != nil {
+		log.Errorf("Failed to get bento config: %v\n", err)
+		return
+	}
+
+	keys, err := utils.LoadKeys(cfg)
+	if err != nil {
+		log.Errorf("Failed to get bento keys: %v\n", err)
+		return
+	}
+
+	creds, err := utils.PromptCredentials()
+	if err != nil {
+		log.Errorf("Failed to get credentials: %v\n", err)
+		return
+	}
+
+	log.Info("Authenticating...")
+	token, err := utils.Auth(creds.Email, creds.Password)
+	if err != nil {
+		return
+	}
+
+	hashed, signature, err := utils.GetSignature(keys)
+	if err != nil {
+		log.Errorf("Failed to get authentication signature: %v\n", err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/bento/personal/%s", utils.GetServiceURL(), cfg.BentoId), nil)
+	if err != nil {
+		log.Errorf("Failed to prepare order: %v\n", err)
+		return
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("X-Bento-Hashed", base64.StdEncoding.EncodeToString(hashed))
+	req.Header.Set("X-Bento-Signature", base64.StdEncoding.EncodeToString(signature))
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("Failed to place order: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("Failed to read response body: %v\n", err)
+		return
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		log.Info("Deleted")
+	} else {
+		log.Errorf("Error (%d): %s\n", resp.StatusCode, string(respBodyBytes))
+	}
+}
