@@ -26,3 +26,5 @@ go.work
 # Konbini
 .konbini.yaml
 bin
+
+dist/
