@@ -62,7 +62,7 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 
 	// encrypt env envData
 	log.Info("Encrypting env data...")
-	encrypted, err := utils.Encrypt(envData, keys)
+	k, v, err := utils.Encrypt(envData, keys)
 	if err != nil {
 		log.Errorf("Failed to encrypt env data: %v\n", err)
 		return
@@ -90,12 +90,15 @@ func createBentoRun(cmd *cobra.Command, args []string) {
 	}
 
 	log.Info("Gathering bento ingridients...")
-	content := base64.StdEncoding.EncodeToString(encrypted)
-	log.Info(content)
+	keyvals := []string{}
+	for i := 0; i < len(v); i++ {
+		enc := base64.StdEncoding.EncodeToString(v[i])
+		keyvals = append(keyvals, k[i], enc)
+	}
 	bentoForm := form.BentoForm{
 		Name:      args[0],
 		PublicKey: string(publicPEM),
-		Content:   base64.StdEncoding.EncodeToString(encrypted),
+		KeyVals:   keyvals,
 	}
 	reqBodyBytes, err := json.Marshal(bentoForm)
 	if err != nil {
@@ -164,7 +167,7 @@ type PersonalBento struct {
 	Id        string    `json:"id"`
 	OwnerId   string    `json:"owner_id"`
 	Name      string    `json:"name"`
-	Content   string    `json:"content"`
+	KeyVals   []string  `json:"keyvals"`
 	PubKey    string    `json:"pub_key"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -253,14 +256,21 @@ func getBentoRun(cmd *cobra.Command, args []string) {
 		log.Info("Got bento! Opening bento...")
 
 		// open bento by decrypting the content
-		plaintext, err := utils.Decrypt(bento.Content, keys)
+		k, v, err := utils.Decrypt(bento.KeyVals, keys)
 		if err != nil {
 			log.Errorf("Failed to decrypt bento: %v\n", err)
 			return
 		}
 
 		log.Info("Saving bento into disk...")
-		err = os.WriteFile(".env", plaintext, 0644)
+		var builder strings.Builder
+		for i := 0; i < len(k); i++ {
+			builder.WriteString(k[i])
+			builder.WriteString("=")
+			builder.WriteString(string(v[i]))
+			builder.WriteString("\n")
+		}
+		err = os.WriteFile(".env", []byte(builder.String()), 0644)
 		if err != nil {
 			log.Errorf("Failed to save bento to disk: %v\n", err)
 			return
