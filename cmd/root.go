@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func executeRootCmd() error {
+// Execute initializes all commands and will run the cli.
+// Any additional commands should be added here.
+func Execute() error {
 	rootCmd := &cobra.Command{
 		Version: os.Getenv("VERSION"),
 		Use:     "konbini",
@@ -23,6 +25,8 @@ func executeRootCmd() error {
 			return nil
 		},
 	}
+
+	rootCmd.AddCommand(getSignupCmd())
 
 	return rootCmd.ExecuteContext(context.Background())
 }
