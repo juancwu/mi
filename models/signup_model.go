@@ -11,7 +11,6 @@ import (
 
 type signupModel struct {
 	inputs     []textinputGroup
-	hasErrors  bool
 	focusIndex int
 	cursor     cursor.Mode
 }
@@ -62,16 +61,28 @@ func (m signupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyTab, tea.KeyEnter, tea.KeyDown:
 			// 4 inputs, last idx is 3
 			if msg.Type == tea.KeyEnter && m.focusIndex == 3 {
+				hasErrors := false
+				firstErrIdx := -1
 				for i := range m.inputs {
 					if m.inputs[i].Validate != nil {
 						m.inputs[i].Err = m.inputs[i].Validate(m.inputs[i].Input.Value())
 						if m.inputs[i].Err != nil {
-							m.hasErrors = true
+							hasErrors = true
+							if firstErrIdx == -1 {
+								firstErrIdx = i
+							}
 						}
 					}
 				}
-				if m.hasErrors {
-					return m, m.updateInputs(msg)
+
+				if hasErrors {
+					m.inputs[m.focusIndex].Input.Blur()
+					m.focusIndex = firstErrIdx
+					cmds := []tea.Cmd{
+						m.inputs[firstErrIdx].Input.Focus(),
+						m.updateInputs(msg),
+					}
+					return m, tea.Batch(cmds...)
 				}
 				return m, tea.Quit
 			}
