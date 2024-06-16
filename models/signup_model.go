@@ -127,19 +127,20 @@ func (m signupModel) View() string {
 
 	for i := range m.inputs {
 		if m.inputs[i].Err != nil {
-			if i < len(m.inputs)-1 {
-				builder.WriteString(fmt.Sprintf("%s %s %s\n", m.inputs[i].Label, m.inputs[i].Input.View(), m.inputs[i].Err.Error()))
-			} else {
-				builder.WriteString(fmt.Sprintf("%s %s %s", m.inputs[i].Label, m.inputs[i].Input.View(), m.inputs[i].Err.Error()))
-			}
+			builder.WriteString(fmt.Sprintf(
+				"%s %s %s\n",
+				m.inputs[i].Label,
+				m.inputs[i].Input.View(),
+				errStyle.Render(m.inputs[i].Err.Error()),
+			))
 			continue
 		}
 
-		if i < len(m.inputs)-1 {
-			builder.WriteString(fmt.Sprintf("%s %s\n", m.inputs[i].Label, m.inputs[i].Input.View()))
-		} else {
-			builder.WriteString(fmt.Sprintf("%s %s", m.inputs[i].Label, m.inputs[i].Input.View()))
-		}
+		builder.WriteString(
+			fmt.Sprintf("%s %s\n",
+				m.inputs[i].Label,
+				m.inputs[i].Input.View(),
+			))
 	}
 
 	return builder.String()
