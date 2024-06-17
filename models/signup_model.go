@@ -1,13 +1,32 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+type apiResponse struct {
+	StatusCode int    `json:"status_code"`
+	Message    string `json:"message"`
+}
+
+// signupRequestBody represents the JSON body that the signup endpoint requires for a signup.
+type signupRequestBody struct {
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
 
 type signupModel struct {
 	inputs     []textinputGroup
@@ -82,6 +101,59 @@ func (m signupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, tea.Batch(cmds...)
 				}
+
+				email := m.inputs[0].Input.Value()
+				password := m.inputs[1].Input.Value()
+				firstName := m.inputs[2].Input.Value()
+				lastName := m.inputs[3].Input.Value()
+
+				reqBody := signupRequestBody{
+					Email:     email,
+					Password:  password,
+					FirstName: firstName,
+					LastName:  lastName,
+				}
+				reqBodyBytes, err := json.Marshal(reqBody)
+				if err != nil {
+					log.Fatal(err)
+					return m, tea.Quit
+				}
+
+				reqBodyReader := bytes.NewReader(reqBodyBytes)
+				req, err := http.NewRequest(http.MethodPost, "http://localhost:3000/api/v1/account/signup", reqBodyReader)
+				if err != nil {
+					log.Fatal(err)
+					return m, tea.Quit
+				}
+				req.Header.Add("Content-Type", "application/json")
+
+				client := http.Client{}
+				res, err := client.Do(req)
+				if err != nil {
+					log.Fatal(err)
+					return m, tea.Quit
+				}
+				defer res.Body.Close()
+
+				resBodyBytes, err := io.ReadAll(res.Body)
+				if err != nil {
+					log.Fatal(err)
+					return m, tea.Quit
+				}
+				var resBody apiResponse
+				err = json.Unmarshal(resBodyBytes, &resBody)
+				if err != nil {
+					log.Fatal(err)
+					return m, tea.Quit
+				}
+
+				if res.StatusCode != http.StatusCreated {
+					log.Fatal(errors.New(resBody.Message))
+					return m, tea.Quit
+				}
+
+				fmt.Println(resBody.Message)
+
 				return m, tea.Quit
 			}
 
