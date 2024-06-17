@@ -26,11 +26,9 @@ func InitSignupModel() signupModel {
 	passwordInputGroup.Validate = validateMinLen(12)
 
 	firstNameInput := textinput.New()
-	firstNameInput.Placeholder = "Optional"
 	firstNameInputGroup := newTextinputGroup(firstNameInput, "First Name")
 
 	lastNameInput := textinput.New()
-	lastNameInput.Placeholder = "Optional"
 	lastNameInputGroup := newTextinputGroup(lastNameInput, "Last Name")
 
 	m := signupModel{
@@ -125,6 +123,7 @@ func (m signupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m signupModel) View() string {
 	var builder strings.Builder
 
+	builder.WriteString("Use tab, enter, or arrow keys to navigate the inputs.\n\n")
 	for i := range m.inputs {
 		if m.inputs[i].Err != nil {
 			builder.WriteString(fmt.Sprintf(
@@ -142,6 +141,7 @@ func (m signupModel) View() string {
 				m.inputs[i].Input.View(),
 			))
 	}
+	builder.WriteString("\nPress ESC to quit the program.\n")
 
 	return builder.String()
 }
