@@ -34,6 +34,19 @@ func getLoginCmd() (*cobra.Command, error) {
 	return loginCmd, nil
 }
 
+// getEmailVerificationCmd will initialize the cobra command for getting a new email verification.
+// The same email can only get a new email verification every 60 seconds.
+func getEmailVerificationCmd() *cobra.Command {
+	emailVerificationCmd := &cobra.Command{
+		Use: "send-verification-email",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+
+	return emailVerificationCmd
+}
+
 // getLogoutCmd will initialize the cobra command for logging out
 // which then can be added to a higher up command or executed directly.
 func getLogoutCmd() (*cobra.Command, error) {
