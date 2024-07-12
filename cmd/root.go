@@ -2,6 +2,7 @@ package cmd
 
 import "github.com/spf13/cobra"
 
+// newRootCmd creates a root command and all its subcommands.
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mi",
@@ -15,9 +16,12 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(newAuthCmd())
+
 	return cmd
 }
 
+// Execute starts the cli.
 func Execute() error {
 	cmd := newRootCmd()
 	if err := cmd.Execute(); err != nil {
