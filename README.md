@@ -9,7 +9,7 @@ among other features such as registering to Konbini, viewing all your bentos, et
 
 ```shell
 # Change the variables as needed
-curl -L -o mi https://github.com/juancwu/mi-cli/releases/download/$VERSION/mi-$OS-$ARCH
+curl -L -o mi https://github.com/juancwu/mi/releases/download/$VERSION/mi-$OS-$ARCH
 
 # Make downloaded binary an executable
 chmod +x mi
@@ -24,7 +24,7 @@ You will need to have Go installed in your local machine.
  
 ```shell
 # Clone the repo and cd into the repo
-git clone git@github.com:juancwu/mi-cli.git
+git clone git@github.com:juancwu/mi.git
 
 # Build
 go build -o mi .
