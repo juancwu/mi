@@ -41,6 +41,4 @@ You can remove the repository if you want to.
 
 | Command | Description |
 | ------- | ----------- |
-| `mi get membership` | Use to register and unlock the features of Konbini. |
-| `mi get bento` | Get a bento based on the `.mi.yaml` that is generated when a new bento is cooked with `mi cook bento [name]`. The public/private keys must be accessible. |
-| `mi cook bento` | Cook a new bento to store in Konbini. This will read the `.env` file present in the `cwd`. New RSA keys will be generated as well as the `.mi.yaml` configuration file. |
+| `mi auth signup` | Use to register and unlock the features of Konbini. |
