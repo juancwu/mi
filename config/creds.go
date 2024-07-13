@@ -1,4 +1,4 @@
-package cmd
+package config
 
 import (
 	"encoding/json"
@@ -12,15 +12,15 @@ const (
 	CREDS_FILE      = "creds.json"
 )
 
-// creds represent the json that is saved in the config folder for tokens.
-type creds struct {
+// Credentials represent the json that is saved in the config folder for tokens.
+type Credentials struct {
 	Email        string `json:"email,omitempty"`
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-// loadCreds loads up the creds file in the config folder if exists, otherwise it returns an error.
-func loadCreds() (*creds, error) {
+// LoadCredentials loads up the Credentials file in the config folder if exists, otherwise it returns an error.
+func LoadCredentials() (*Credentials, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func loadCreds() (*creds, error) {
 	if err != nil {
 		return nil, err
 	}
-	var c creds
+	var c Credentials
 	err = json.Unmarshal(b, &c)
 	if err != nil {
 		return nil, err
@@ -42,8 +42,8 @@ func loadCreds() (*creds, error) {
 	return &c, nil
 }
 
-// saveCreds saves the given token creds in the config folder "$HOME/.config/mi"
-func saveCreds(c *creds) error {
+// SaveCredentials saves the given token Credentials in the config folder "$HOME/.config/mi"
+func SaveCredentials(c *Credentials) error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func saveCreds(c *creds) error {
 	if err != nil {
 		return err
 	}
-	// only let the owner read/write the creds file
+	// only let the owner read/write the Credentials file
 	f, err := os.OpenFile(configFile, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err

@@ -148,7 +148,7 @@ func newSigninCmd() *cobra.Command {
 			}
 			defer res.Body.Close()
 			if res.StatusCode == http.StatusOK {
-				var c creds
+				var c config.Credentials
 				b, err = io.ReadAll(res.Body)
 				if err != nil {
 					return err
@@ -158,11 +158,11 @@ func newSigninCmd() *cobra.Command {
 					return err
 				}
 				c.Email = email
-				err = saveCreds(&c)
+				err = config.SaveCredentials(&c)
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%s credentials were saved in $HOME/.config/%s/%s. If you do not wish them to be there save them somewhere else.\n", text.Foreground(text.YELLOW, "WARN:"), CONFIG_DIR_NAME, CREDS_FILE)
+				fmt.Printf("%s credentials were saved in $HOME/.config/%s/%s. If you do not wish them to be there save them somewhere else.\n", text.Foreground(text.YELLOW, "WARN:"), config.CONFIG_DIR_NAME, config.CREDS_FILE)
 				fmt.Println(text.Foreground(text.GREEN, fmt.Sprintf("Successfully signed in as: %s", email)))
 			} else {
 				var resBody apiResponse
@@ -189,7 +189,7 @@ func newSigninCmd() *cobra.Command {
 }
 
 // getNewAccessToken makes a request to get a new access token with a stored refresh token.
-func getNewAccessToken(c *creds) error {
+func getNewAccessToken(c *config.Credentials) error {
 	req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/auth/refresh", config.GetServiceURL()), nil)
 	if err != nil {
 		return err
@@ -217,7 +217,7 @@ func getNewAccessToken(c *creds) error {
 			return errors.New("No access token found in response body.")
 		}
 		c.AccessToken = at
-		err = saveCreds(c)
+		err = config.SaveCredentials(c)
 		if err != nil {
 			return err
 		}
