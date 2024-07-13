@@ -24,7 +24,7 @@ go.work
 *.pem
 
 # Konbini
-.konbini.yaml
+.miconfig.yaml
 bin
 
 dist/
