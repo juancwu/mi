@@ -17,6 +17,7 @@ func newRootCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newAuthCmd())
+	cmd.AddCommand(newBentoCmd())
 
 	return cmd
 }
