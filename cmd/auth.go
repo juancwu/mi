@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/juancwu/konbini-cli/config"
-	"github.com/juancwu/konbini-cli/text"
+	"github.com/juancwu/mi/config"
+	"github.com/juancwu/mi/text"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

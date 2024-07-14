@@ -15,7 +15,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/juancwu/konbini-cli/config"
+	"github.com/juancwu/mi/config"
 	"github.com/spf13/cobra"
 )
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/juancwu/konbini-cli/cmd"
-	"github.com/juancwu/konbini-cli/text"
+	"github.com/juancwu/mi/cmd"
+	"github.com/juancwu/mi/text"
 )
 
 func main() {

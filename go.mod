@@ -1,4 +1,4 @@
-module github.com/juancwu/konbini-cli
+module github.com/juancwu/mi
 
 go 1.22.0
 
