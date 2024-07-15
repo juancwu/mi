@@ -42,3 +42,5 @@ You can remove the repository if you want to.
 | Command | Description |
 | ------- | ----------- |
 | `mi auth signup` | Use to register and unlock the features of Konbini. |
+| `mi bento prepare <bento-name>` | Fills a bento with the key value pairs in the given env file. |
+| `mi bento fill <path-to-env-file>` | Fills a bento with the key value pairs in the given env file. |

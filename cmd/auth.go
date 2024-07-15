@@ -23,6 +23,7 @@ type apiResponse struct {
 	Message   string   `json:"message"`
 	RequestId string   `json:"request_id"`
 	Errs      []string `json:"errors,omitempty"`
+	BentoId   string   `json:"bento_id,omitempty"`
 }
 
 // newAuthCmd creates a new auth command and all its subcommands.
