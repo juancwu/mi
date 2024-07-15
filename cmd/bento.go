@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"crypto"
 	"crypto/rand"
@@ -316,6 +317,31 @@ func newOrderBentoCmd() *cobra.Command {
 		Short: "Ordered a bento that was previously prepared.",
 		Long:  "Use this command when you need to get the contents of a bento that was previously prepared. You will need the private key that was used for the prepared bento.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// before doing anything, need to confirm overwrite of .env if exists or append
+			exists, err := file_exists(".env")
+			if err != nil {
+				return err
+			}
+
+			writeEnvFileFlags := os.O_CREATE | os.O_WRONLY
+			if exists {
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Print("An existing .env file found. Do you want to overwrite (w), append (a) or abort (q)? [w/a/q] ")
+				answer, err := reader.ReadString(10)
+				if err != nil {
+					return err
+				}
+				answer = answer[:len(answer)-1]
+				switch answer {
+				case "w":
+					writeEnvFileFlags |= os.O_TRUNC
+				case "a":
+					writeEnvFileFlags |= os.O_APPEND
+				default:
+					fmt.Println("Exit")
+					return nil
+				}
+			}
 			cfg, err := config.LoadConfiguration()
 			if err != nil {
 				return err
@@ -351,18 +377,54 @@ func newOrderBentoCmd() *cobra.Command {
 			values.Add("challenge", encodedChallenge)
 			q := values.Encode()
 			// prepare http request
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/bento/%s?%s", config.GetServiceURL(), cfg.BentoId, q), nil)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/bento/order/%s?%s", config.GetServiceURL(), cfg.BentoId, q), nil)
 			if err != nil {
 				return err
 			}
 			// prepare client
 			client := http.Client{}
 			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
 			switch res.StatusCode {
 			case http.StatusOK:
-				fmt.Println("success")
+				var resBody orderBentoResponseBody
+				resBodyBytes, err := io.ReadAll(res.Body)
+				if err != nil {
+					return err
+				}
+				err = json.Unmarshal(resBodyBytes, &resBody)
+				if err != nil {
+					return err
+				}
+				if len(resBody.Ingridients) < 1 {
+					return errors.New("Status 200 but no bento received.")
+				}
+				fmt.Println("Bento arrived!")
+				fmt.Println("Unpacking bento...")
+				err = write_ingridients_to_env(pk, resBody.Ingridients, writeEnvFileFlags)
+				if err != nil {
+					return err
+				}
+				fmt.Println("All done!")
 			default:
-				fmt.Println("failed")
+				var resBody apiResponse
+				resBodyBytes, err := io.ReadAll(res.Body)
+				if err != nil {
+					return err
+				}
+				err = json.Unmarshal(resBodyBytes, &resBody)
+				if resBody.Message != "" {
+					fmt.Println(text.Foreground(text.RED, resBody.Message))
+				}
+				if len(resBody.Errs) > 0 {
+					for _, errMsg := range resBody.Errs {
+						fmt.Println(text.Foreground(text.RED, fmt.Sprintf("[ERROR]: %s", errMsg)))
+					}
+				}
+				fmt.Println(text.Foreground(text.RED, fmt.Sprintf("Request ID: %s", resBody.RequestId)))
 			}
 			return nil
 		},
@@ -541,4 +603,49 @@ func read_json_respone_body(res *http.Response, i interface{}) error {
 		return err
 	}
 	return json.Unmarshal(out, i)
+}
+
+// write_ingridients_to_env will write the given ingridients into the current working directory.
+//
+// IMPORTANT: any existing .env file will be overwritten.
+func write_ingridients_to_env(pk *rsa.PrivateKey, ingridients []ingridient, flags int) error {
+	f, err := os.OpenFile(".env", flags, 0600)
+	if err != nil {
+		return err
+	}
+	var (
+		decoded   []byte
+		decrypted []byte
+		nameBytes []byte
+	)
+	for _, ingridient := range ingridients {
+		decoded, err = hex.DecodeString(ingridient.Value)
+		if err != nil {
+			fmt.Println(text.Foreground(text.RED, fmt.Sprintf("[ERROR]: Failed to decode the value of ingridient '%s'.", ingridient.Name)))
+			continue
+		}
+		decrypted, err = decryptValue(pk, decoded)
+		if err != nil {
+			fmt.Println(text.Foreground(text.RED, fmt.Sprintf("[ERROR]: Failed to decrypt the value of ingridient '%s'.", ingridient.Name)))
+			continue
+		}
+		// converting name to bytes because it is usually shorter instead of value to bytes
+		nameBytes = []byte(ingridient.Name)
+		f.Write(nameBytes)
+		f.WriteString("=")
+		f.Write(decrypted)
+		f.WriteString("\n")
+	}
+	return nil
+}
+
+// file_exists checks if file exists or not. If there is an error (apart from not exists error), it will return falsy and the error.
+func file_exists(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return !stat.IsDir(), nil
 }
