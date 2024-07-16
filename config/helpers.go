@@ -8,5 +8,5 @@ func GetServiceURL() string {
 	if os.Getenv("APP_ENV") == "dev" {
 		return "http://127.0.0.1:3000"
 	}
-	return ""
+	return "https://konbini.juancwu.dev"
 }
