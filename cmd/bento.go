@@ -19,7 +19,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/juancwu/mi/config"
 	"github.com/juancwu/mi/text"
 	"github.com/spf13/cobra"
@@ -34,6 +36,7 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newOrderBentoCmd())
 	cmd.AddCommand(newPrepareBentoCmd())
 	cmd.AddCommand(newFillBentoCmd())
+	cmd.AddCommand(newThrowBentoCmd())
 	return cmd
 }
 
@@ -436,6 +439,143 @@ func newOrderBentoCmd() *cobra.Command {
 	return cmd
 }
 
+func newThrowBentoCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "throw",
+		Short: "Throws a bento.",
+		Long:  "Throws an existing bento. All contents will be deleted and cannot be recovered. You must be signed in with the account that owns the bento.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Please confirm you want to delete the bento defined in .miconfig.yaml? [y/n] ")
+			confirmation, err := reader.ReadString(ascii_linefeed)
+			if err != nil {
+				return err
+			}
+			fmt.Println()
+			if confirmation == "y\n" {
+				// reconfirm
+				fmt.Print("ARE YOU SURE SURE YOU WANT TO PROCEED? [y/n] ")
+				confirmation, err = reader.ReadString(ascii_linefeed)
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+				if confirmation != "y\n" {
+					fmt.Println("Exit")
+					return nil
+				}
+			} else {
+				fmt.Println("Exit")
+				return nil
+			}
+			cfg, err := config.LoadConfiguration()
+			if err != nil {
+				return err
+			}
+			creds, err := config.LoadCredentials()
+			if err != nil {
+				return err
+			}
+
+			expired, err := is_jwt_expired(creds.AccessToken)
+			if err != nil {
+				return err
+			}
+			if expired {
+				expired, err = is_jwt_expired(creds.RefreshToken)
+				if err != nil {
+					return err
+				}
+				if expired {
+					return errors.New("Signed out. Please sign in again.")
+				}
+				err = getNewAccessToken(creds)
+				if err != nil {
+					return err
+				}
+			}
+
+			// make request to delete bento
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/bento/throw/%s", config.GetServiceURL(), cfg.BentoId), nil)
+			if err != nil {
+				return err
+			}
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", creds.AccessToken))
+
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+
+			if res.StatusCode == http.StatusOK {
+				fmt.Println("Bento deleted.")
+				res.Body.Close()
+				if exists, _ := file_exists(".miconfig.yaml"); exists {
+					fmt.Print("Do you want to delete '.miconfig.yaml'? [y/n] ")
+					confirmation, err = reader.ReadString(ascii_linefeed)
+					if err != nil {
+						return err
+					}
+					fmt.Println()
+					if confirmation == "y\n" {
+						fmt.Println("Deleting '.miconfig.yaml'")
+						err = os.Remove(".miconfig.yaml")
+						if err != nil {
+							fmt.Println(text.Foreground(text.RED, "Failed to remove .miconfig.yaml"))
+						}
+					}
+				}
+				if exists, _ := file_exists(".env"); exists {
+					fmt.Print("Do you want to delete '.env'? [y/n] ")
+					confirmation, err = reader.ReadString(ascii_linefeed)
+					if err != nil {
+						return err
+					}
+					fmt.Println()
+					if confirmation == "y\n" {
+						fmt.Println("Deleting '.env'")
+						err = os.Remove(".env")
+						if err != nil {
+							fmt.Println(text.Foreground(text.RED, "Failed to remove .env"))
+						}
+					}
+				}
+				if exists, _ := file_exists(cfg.PrivateKeyPath); exists {
+					fmt.Printf("Do you want to delete the private key (path: %s)? [y/n] ", cfg.PrivateKeyPath)
+					confirmation, err = reader.ReadString(ascii_linefeed)
+					if err != nil {
+						return err
+					}
+					fmt.Println()
+					if confirmation == "y\n" {
+						fmt.Printf("Deleting '%s'\n", cfg.PrivateKeyPath)
+						err = os.Remove(cfg.PrivateKeyPath)
+						if err != nil {
+							fmt.Println(text.Foreground(text.RED, fmt.Sprintf("Failed to remove '%s'", cfg.PrivateKeyPath)))
+						}
+					}
+				}
+			} else {
+				var resBody map[string]string
+				resBodyBytes, err := io.ReadAll(res.Body)
+				if err != nil {
+					return err
+				}
+				err = json.Unmarshal(resBodyBytes, &resBody)
+				if err != nil {
+					return err
+				}
+				fmt.Println(text.Foreground(text.RED, fmt.Sprintf("[ERROR]: %s", resBody["message"])))
+				res.Body.Close()
+			}
+
+			return nil
+		},
+	}
+	return cmd
+}
+
 // createChallenge generates a challenge that can later be used for signing.
 // Most bento related actions required a signed challenge to gain access.
 func createChallenge() ([]byte, error) {
@@ -648,4 +788,17 @@ func file_exists(path string) (bool, error) {
 		return false, err
 	}
 	return !stat.IsDir(), nil
+}
+
+// is_jwt_expired verifies if the given token is still valid or not.
+func is_jwt_expired(tokenStr string) (bool, error) {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &jwt.RegisteredClaims{})
+	if err != nil {
+		return true, err
+	}
+	expirationTime, err := token.Claims.GetExpirationTime()
+	if err != nil {
+		return true, err
+	}
+	return time.Now().After(expirationTime.Time), nil
 }
