@@ -215,6 +215,16 @@ func newFillBentoCmd() *cobra.Command {
 				return err
 			}
 
+			credentials, err := config.LoadCredentials()
+			if err != nil {
+				if os.IsNotExist(err) {
+					// need to sign in first
+					fmt.Println("Please sign in before filling a bento. Use: 'mi auth signin' or 'mi auth signup' to create a new account.")
+					return nil
+				}
+				return err
+			}
+
 			bentoId, err := cmd.Flags().GetString("bento")
 			if err != nil {
 				return err
@@ -283,6 +293,7 @@ func newFillBentoCmd() *cobra.Command {
 			}
 			req.Header.Add(header_content_type, header_mime_json)
 			req.Header.Add(header_content_length, strconv.Itoa(len(reqBodyBytes)))
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", credentials.AccessToken))
 			client := http.Client{}
 			res, err := client.Do(req)
 			if err != nil {
