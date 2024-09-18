@@ -14,6 +14,7 @@ import (
 
 	"github.com/juancwu/mi/config"
 	"github.com/juancwu/mi/text"
+	"github.com/juancwu/mi/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -34,6 +35,7 @@ func newAuthCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newSignupCmd())
 	cmd.AddCommand(newSigninCmd())
+	cmd.AddCommand(newResendVerificationEmailCmd())
 	return cmd
 }
 
@@ -182,6 +184,51 @@ func newSigninCmd() *cobra.Command {
 						fmt.Printf("%s %s\n", text.Foreground(text.RED, "Error:"), e)
 					}
 				}
+			}
+			return nil
+		},
+	}
+	return cmd
+}
+
+
+func newResendVerificationEmailCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "resend-verification <email>",
+		Short: "Resends verification email.",
+		Long:  "Resends verification email.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			email := args[0]
+			serviceUrl := config.GetServiceURL()
+			body := map[string]string{
+				"email": email,
+			}
+			marshalled, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			buf := bytes.NewBuffer(marshalled)
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/auth/email/resend", serviceUrl), buf)
+			req.Header.Add("Content-Type", "application/json")
+			req.Header.Add("Content-Length", strconv.Itoa(buf.Len()))
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBodyBytes, err := io.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
+			var resBody apiResponse
+			if err := json.Unmarshal(resBodyBytes, &resBody); err != nil {
+				return err
+			}
+			fmt.Printf("Message: %s\nRequest ID: %s\n", resBody.Message, resBody.RequestId)
+			if len(resBody.Errs) > 0 {
+				util.LogApiResponseErrs(resBody.Errs)
 			}
 			return nil
 		},
