@@ -21,12 +21,12 @@ type Credentials struct {
 
 // LoadCredentials loads up the Credentials file in the config folder if exists, otherwise it returns an error.
 func LoadCredentials() (*Credentials, error) {
-	configDir, err := os.UserConfigDir()
+	credsDir, err := getCredentialsPath()
 	if err != nil {
 		return nil, err
 	}
-	configFile := filepath.Join(configDir, CONFIG_DIR_NAME, CREDS_FILE)
-	f, err := os.Open(configFile)
+	credsFile := filepath.Join(credsDir, CONFIG_DIR_NAME, CREDS_FILE)
+	f, err := os.Open(credsFile)
 	if err != nil {
 		return nil, err
 	}
@@ -43,18 +43,19 @@ func LoadCredentials() (*Credentials, error) {
 }
 
 // SaveCredentials saves the given token Credentials in the config folder "$HOME/.config/mi"
+// If APP_ENV is "dev", then it will be in the "$CWD/tmp/.config/mi".
 func SaveCredentials(c *Credentials) error {
-	configDir, err := os.UserConfigDir()
+	credsDir, err := getCredentialsPath()
 	if err != nil {
 		return err
 	}
-	configFile := filepath.Join(configDir, CONFIG_DIR_NAME, CREDS_FILE)
-	_, err = os.Stat(configFile)
+	credsFile := filepath.Join(credsDir, CONFIG_DIR_NAME, CREDS_FILE)
+	_, err = os.Stat(credsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// create dir
 			// needs executive perms to work with dir in Unix
-			err = os.MkdirAll(filepath.Join(configDir, CONFIG_DIR_NAME), 0700)
+			err = os.MkdirAll(filepath.Join(credsDir, CONFIG_DIR_NAME), 0700)
 			if err != nil {
 				return err
 			}
@@ -67,11 +68,25 @@ func SaveCredentials(c *Credentials) error {
 		return err
 	}
 	// only let the owner read/write the Credentials file
-	f, err := os.OpenFile(configFile, os.O_RDWR|os.O_CREATE, 0600)
+	f, err := os.OpenFile(credsFile, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	_, err = f.Write(b)
 	return err
+}
+
+// getCredentialsPath returns the path where credentials should be stored based on the
+// APP_ENV environment variable. If value is "dev" then it will create a new directory
+// named "tmp" in the CWD, otherwise it defaults to the user's configuration directory.
+func getCredentialsPath() (string, error) {
+	if os.Getenv("APP_ENV") == "dev" {
+		return "./tmp", nil
+	}
+	cfgDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return cfgDir, nil
 }
