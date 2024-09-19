@@ -37,6 +37,7 @@ func newAuthCmd() *cobra.Command {
 	cmd.AddCommand(newSigninCmd())
 	cmd.AddCommand(newResendVerificationEmailCmd())
 	cmd.AddCommand(newVerifyEmailCmd())
+	cmd.AddCommand(newResetPasswordCmd())
 	return cmd
 }
 
@@ -267,6 +268,36 @@ func newResendVerificationEmailCmd() *cobra.Command {
 			if len(resBody.Errs) > 0 {
 				util.LogApiResponseErrs(resBody.Errs)
 			}
+			return nil
+		},
+	}
+	return cmd
+}
+
+func newResetPasswordCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "reset-password <email>",
+		Short: "Start reset password process.",
+		Long:  "Start reset password process. You will need access to the email that is linked to the account.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			email := args[0]
+			serviceUrl := config.GetServiceURL()
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/auth/forgot/password?email=%s", serviceUrl, url.QueryEscape(email)), nil)
+			if err != nil {
+				return err
+			}
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBody, err := readApiResponseBody(res.Body)
+			if err != nil {
+				return err
+			}
+			logApiResponseBody(resBody)
 			return nil
 		},
 	}
