@@ -50,3 +50,16 @@ func getNewAccessToken(c *config.Credentials) error {
 	}
 	return nil
 }
+
+// readApiResponseBody tries to read a response body of type JSON and returns the apiResponse struct.
+func readApiResponseBody(body io.ReadCloser) (*apiResponse, error) {
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	var resBody apiResponse
+	if err := json.Unmarshal(b, &resBody); err != nil {
+		return nil, err
+	}
+	return &resBody, nil
+}
