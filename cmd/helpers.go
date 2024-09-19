@@ -11,43 +11,60 @@ import (
 	"github.com/juancwu/mi/util"
 )
 
-// getNewAccessToken makes a request to get a new access token with a stored refresh token.
+// getNewAccessToken makes a request (only if access token is expired and refresh token is still valid) to get a new access token with a stored refresh token.
 func getNewAccessToken(c *config.Credentials) error {
-	req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/auth/refresh", config.GetServiceURL()), nil)
+	expired, err := is_jwt_expired(c.AccessToken)
 	if err != nil {
 		return err
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.RefreshToken))
-	client := http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	switch res.StatusCode {
-	case http.StatusOK:
-		var body map[string]string
-		b, err := io.ReadAll(res.Body)
+	if expired {
+		expired, err = is_jwt_expired(c.RefreshToken)
 		if err != nil {
 			return err
 		}
-		err = json.Unmarshal(b, &body)
+		if expired {
+			if err := c.Remove(); err != nil {
+				fmt.Printf("Failed to remove expired credentials: %v\n", err)
+			}
+			return errors.New("Access and refresh token expired. Please sign-in again using `mi auth signin`.")
+		}
+		// refresh token is still valid, get new access token
+		req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/auth/refresh", config.GetServiceURL()), nil)
 		if err != nil {
 			return err
 		}
-		at, ok := body["access_token"]
-		if !ok {
-			return errors.New("No access token found in response body.")
-		}
-		c.AccessToken = at
-		err = config.SaveCredentials(c)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.RefreshToken))
+		client := http.Client{}
+		res, err := client.Do(req)
 		if err != nil {
 			return err
 		}
-	case http.StatusUnauthorized:
-		return newErrExpiredCreds()
-	default:
-		return errors.New("Failed to get new access token.")
+		defer res.Body.Close()
+		switch res.StatusCode {
+		case http.StatusOK:
+			var body map[string]string
+			b, err := io.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(b, &body)
+			if err != nil {
+				return err
+			}
+			at, ok := body["access_token"]
+			if !ok {
+				return errors.New("No access token found in response body.")
+			}
+			c.AccessToken = at
+			err = config.SaveCredentials(c)
+			if err != nil {
+				return err
+			}
+		case http.StatusUnauthorized:
+			return newErrExpiredCreds()
+		default:
+			return errors.New("Failed to get new access token.")
+		}
 	}
 	return nil
 }
