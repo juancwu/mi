@@ -14,9 +14,15 @@ const (
 
 // Credentials represent the json that is saved in the config folder for tokens.
 type Credentials struct {
-	Email        string `json:"email,omitempty"`
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	Email         string `json:"email,omitempty"`
+	AccessToken   string `json:"access_token"`
+	RefreshToken  string `json:"refresh_token"`
+	LocalFilePath string
+}
+
+// / Remove a credential file from the default path.
+func (c *Credentials) Remove() error {
+	return os.Remove(c.LocalFilePath)
 }
 
 // LoadCredentials loads up the Credentials file in the config folder if exists, otherwise it returns an error.
@@ -39,36 +45,40 @@ func LoadCredentials() (*Credentials, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.LocalFilePath = credsFile
 	return &c, nil
 }
 
 // SaveCredentials saves the given token Credentials in the config folder "$HOME/.config/mi"
 // If APP_ENV is "dev", then it will be in the "$CWD/tmp/.config/mi".
 func SaveCredentials(c *Credentials) error {
-	credsDir, err := getCredentialsPath()
-	if err != nil {
-		return err
-	}
-	credsFile := filepath.Join(credsDir, CONFIG_DIR_NAME, CREDS_FILE)
-	_, err = os.Stat(credsFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// create dir
-			// needs executive perms to work with dir in Unix
-			err = os.MkdirAll(filepath.Join(credsDir, CONFIG_DIR_NAME), 0700)
-			if err != nil {
-				return err
-			}
-		} else {
+	if c.LocalFilePath == "" {
+		credsDir, err := getCredentialsPath()
+		if err != nil {
 			return err
 		}
+		credsFile := filepath.Join(credsDir, CONFIG_DIR_NAME, CREDS_FILE)
+		_, err = os.Stat(credsFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// create dir
+				// needs executive perms to work with dir in Unix
+				err = os.MkdirAll(filepath.Join(credsDir, CONFIG_DIR_NAME), 0700)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		c.LocalFilePath = credsFile
 	}
 	b, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
 	// only let the owner read/write the Credentials file
-	f, err := os.OpenFile(credsFile, os.O_RDWR|os.O_CREATE, 0600)
+	f, err := os.OpenFile(c.LocalFilePath, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
