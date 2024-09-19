@@ -38,6 +38,7 @@ func newAuthCmd() *cobra.Command {
 	cmd.AddCommand(newResendVerificationEmailCmd())
 	cmd.AddCommand(newVerifyEmailCmd())
 	cmd.AddCommand(newResetPasswordCmd())
+	cmd.AddCommand(newDeleteAccountCmd())
 	return cmd
 }
 
@@ -298,6 +299,67 @@ func newResetPasswordCmd() *cobra.Command {
 				return err
 			}
 			logApiResponseBody(resBody)
+			return nil
+		},
+	}
+	return cmd
+}
+
+func newDeleteAccountCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete-account",
+		Short: "Delete your Konbini account. PERMANENTLY.",
+		Long:  "Delete your Konbini account. PERMANENTLY. You will have to be logged in, or have a valid access token to perform this action.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Are you sure you want to permanently delete your account? [y/n]: ")
+			confirmation, err := reader.ReadString('\n')
+			if err != nil {
+				return err
+			}
+			if confirmation != "y\n" {
+				return nil
+			}
+			fmt.Print("Please confirm again, are you really sure? [y/n]: ")
+			confirmation, err = reader.ReadString('\n')
+			if err != nil {
+				return err
+			}
+			if confirmation != "y\n" {
+				return nil
+			}
+			fmt.Println(text.Foreground(text.YELLOW, "WARNING: PROCEEDING TO DELETE ACCOUNT"))
+			creds, err := config.LoadCredentials()
+			if err != nil {
+				return err
+			}
+			serviceUrl := config.GetServiceURL()
+			if err := getNewAccessToken(creds); err != nil {
+				return err
+			}
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/auth/account", serviceUrl), nil)
+			if err != nil {
+				return err
+			}
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", creds.AccessToken))
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBody, err := readApiResponseBody(res.Body)
+			if err != nil {
+				return err
+			}
+			logApiResponseBody(resBody)
+			if res.StatusCode == http.StatusOK {
+				if err := creds.Remove(); err != nil {
+					fmt.Printf("Failed to remove old saved credentials: %s\n", creds.LocalFilePath)
+					fmt.Printf(text.Foreground(text.RED, "ERROR: %v\n"), err)
+					fmt.Println("The credentials are no longer valid since the account was deleted.")
+				}
+			}
 			return nil
 		},
 	}
