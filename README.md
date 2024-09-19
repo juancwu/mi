@@ -24,10 +24,10 @@ You will need to have Go installed in your local machine.
 
 ```shell
 # Clone the repo and cd into the repo
-git clone git@github.com:juancwu/mi.git
+git clone https://github.com/juancwu/mi.git
 
 # Build
-go build -o mi .
+make
 
 # Move executable to bin
 sudo mv mi /usr/bin
