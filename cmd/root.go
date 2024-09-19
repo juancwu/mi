@@ -3,11 +3,12 @@ package cmd
 import "github.com/spf13/cobra"
 
 // newRootCmd creates a root command and all its subcommands.
-func newRootCmd() *cobra.Command {
+func newRootCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "mi",
-		Short: "Mi is a secret management cli for projects.",
-		Long:  "Mi is a secret management cli for projects that connects to the Konbini API.",
+		Use:     "mi",
+		Short:   "Mi is a secret management cli for projects.",
+		Long:    "Mi is a secret management cli for projects that connects to the Konbini API.",
+		Version: version,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return cmd.Help()
@@ -23,8 +24,8 @@ func newRootCmd() *cobra.Command {
 }
 
 // Execute starts the cli.
-func Execute() error {
-	cmd := newRootCmd()
+func Execute(version string) error {
+	cmd := newRootCmd(version)
 	if err := cmd.Execute(); err != nil {
 		return err
 	}
