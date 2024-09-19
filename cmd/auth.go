@@ -168,7 +168,7 @@ func newSigninCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%s credentials were saved in $HOME/.config/%s/%s. If you do not wish them to be there save them somewhere else.\n", text.Foreground(text.YELLOW, "WARN:"), config.CONFIG_DIR_NAME, config.CREDS_FILE)
+				fmt.Printf("%s credentials were saved in %s. If you do not wish them to be there save them somewhere else.\n", text.Foreground(text.YELLOW, "WARN:"), c.LocalFilePath)
 				fmt.Println(text.Foreground(text.GREEN, fmt.Sprintf("Successfully signed in as: %s", email)))
 			} else {
 				var resBody apiResponse
