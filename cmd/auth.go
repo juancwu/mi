@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"syscall"
@@ -36,6 +37,7 @@ func newAuthCmd() *cobra.Command {
 	cmd.AddCommand(newSignupCmd())
 	cmd.AddCommand(newSigninCmd())
 	cmd.AddCommand(newResendVerificationEmailCmd())
+	cmd.AddCommand(newVerifyEmailCmd())
 	return cmd
 }
 
@@ -191,6 +193,42 @@ func newSigninCmd() *cobra.Command {
 	return cmd
 }
 
+func newVerifyEmailCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "verify-email <code>",
+		Short: "Verifies email with the given code.",
+		Long:  "Verifies email with the given code.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			code := args[0]
+			serviceUrl := config.GetServiceURL()
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/auth/email/verify?code=%s", serviceUrl, url.QueryEscape(code)), nil)
+			if err != nil {
+				return err
+			}
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBodyBytes, err := io.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
+			var resBody apiResponse
+			if err := json.Unmarshal(resBodyBytes, &resBody); err != nil {
+				return err
+			}
+			fmt.Printf("Message: %s\nRequest ID: %s\n", resBody.Message, resBody.RequestId)
+			if len(resBody.Errs) > 0 {
+				util.LogApiResponseErrs(resBody.Errs)
+			}
+			return nil
+		},
+	}
+	return cmd
+}
 
 func newResendVerificationEmailCmd() *cobra.Command {
 	cmd := &cobra.Command{
