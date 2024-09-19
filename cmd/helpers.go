@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/juancwu/mi/config"
+	"github.com/juancwu/mi/util"
 )
 
 // getNewAccessToken makes a request to get a new access token with a stored refresh token.
@@ -62,4 +63,18 @@ func readApiResponseBody(body io.ReadCloser) (*apiResponse, error) {
 		return nil, err
 	}
 	return &resBody, nil
+}
+
+// logApiResponseBody handles formatted logging of an api response body.
+func logApiResponseBody(resBody *apiResponse) {
+	if resBody.Message != "" {
+		fmt.Printf("Message: %s\n", resBody.Message)
+	}
+	if resBody.RequestId != "" {
+
+		fmt.Printf("Request ID: %s\n", resBody.RequestId)
+	}
+	if len(resBody.Errs) > 0 {
+		util.LogApiResponseErrs(resBody.Errs)
+	}
 }
