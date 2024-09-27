@@ -37,6 +37,7 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newFillBentoCmd())
 	cmd.AddCommand(newThrowBentoCmd())
 	cmd.AddCommand(newAllowEditCmd())
+	cmd.AddCommand(newRevokeEditCmd())
 
 	// sub commands
 	cmd.AddCommand(newIngridientCmd())
@@ -680,6 +681,105 @@ func newAllowEditCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("permissions", "p", "", "Optional: desired permission levels to give the receiving user.")
+
+	return cmd
+}
+
+func newRevokeEditCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "revoke-edit <email> [--permissions]",
+		Short: "Removes a user from getting edit access to a bento.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			email := args[0]
+			perms, err := cmd.Flags().GetString("permissions")
+			if err != nil {
+				return err
+			}
+			creds, err := config.LoadCredentials()
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Please sign-in using 'mi auth signin' first.")
+					return nil
+				}
+				return err
+			}
+			if err := getNewAccessToken(creds); err != nil {
+				return err
+			}
+			cfg, err := config.LoadConfiguration()
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Could not find '.miconfig.yaml' in the current working directory.")
+					return nil
+				}
+				return err
+			}
+			// load up private key
+			block, err := readPEMKey(cfg.PrivateKeyPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Could not find private key in the provided config file.")
+					return nil
+				}
+				return err
+			}
+
+			// parse private key
+			pk, err := parsePrivateKey(block)
+			if err != nil {
+				return err
+			}
+
+			challengeBytes, err := createChallenge()
+			if err != nil {
+				return err
+			}
+
+			signatureBytes, err := signChallenge(pk, sha256.Sum256(challengeBytes))
+			if err != nil {
+				return err
+			}
+
+			revokePermissions := strings.Split(perms, ",")
+			body := revokeEditRequest{
+				BentoId:                cfg.BentoId,
+				Email:                  email,
+				Challenge:              encodeChallenge(challengeBytes),
+				Signature:              encodeSignature(signatureBytes),
+				ToBeRevokedPermissions: revokePermissions,
+			}
+
+			bodyBytes, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			readBuffer := bytes.NewBuffer(bodyBytes)
+			serviceUrl := config.GetServiceURL()
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/bento/edit/revoke", serviceUrl), readBuffer)
+			if err != nil {
+				return err
+			}
+			req.Header.Add(header_content_type, header_mime_json)
+			req.Header.Add(header_content_length, strconv.Itoa(len(bodyBytes)))
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", creds.AccessToken))
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBody, err := readApiResponseBody(res.Body)
+			if err != nil {
+				return err
+			}
+			logApiResponseBody(resBody)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringP("permissions", "p", "", "Comma separated permissions to revoke. Refer to https://github.com/juancwu/konbini for more details.")
 
 	return cmd
 }
