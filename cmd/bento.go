@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/juancwu/mi/config"
 	"github.com/juancwu/mi/text"
@@ -35,6 +36,7 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newPrepareBentoCmd())
 	cmd.AddCommand(newFillBentoCmd())
 	cmd.AddCommand(newThrowBentoCmd())
+	cmd.AddCommand(newShareBentoCmd())
 
 	// sub commands
 	cmd.AddCommand(newIngridientCmd())
@@ -587,5 +589,97 @@ func newThrowBentoCmd() *cobra.Command {
 			return nil
 		},
 	}
+	return cmd
+}
+
+func newShareBentoCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "share <share-to-email> [--permissions=]",
+		Short: "Share an existing bento to another user. Sharing its not allowing read. Sharing mean to allow editing an existing bento.",
+		Long:  "Share an existing bento to another user. Sharing its not allowing read. Sharing mean to allow editing an existing bento. Permissions is a comma separated string of options: all,write,delete,share,rename_bento,rename_ingridient,write_ingridient,delete_ingridient,revoke_share. One can only grant up to their own permission level.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			serviceUrl := config.GetServiceURL()
+			email := args[0]
+			p, err := cmd.Flags().GetString("permissions")
+			if err != nil {
+				fmt.Println("Failed to get 'permissions' flag")
+				return err
+			}
+			permissions := strings.Split(p, ",")
+
+			cfg, err := config.LoadConfiguration()
+			if err != nil {
+				return err
+			}
+
+			creds, err := config.LoadCredentials()
+			if err != nil {
+				return err
+			}
+			if err := getNewAccessToken(creds); err != nil {
+				return err
+			}
+
+			// read in private key
+			block, err := readPEMKey(cfg.PrivateKeyPath)
+			if err != nil {
+				return err
+			}
+
+			// parse PEM private key
+			pk, err := parsePrivateKey(block)
+			if err != nil {
+				return err
+			}
+
+			// create challenge
+			challengeBytes, err := createChallenge()
+
+			// sign challenge
+			signatureBytes, err := signChallenge(pk, sha256.Sum256(challengeBytes))
+			if err != nil {
+				return err
+			}
+
+			body := map[string]any{
+				"bento_id":          cfg.BentoId,
+				"share_to_email":    email,
+				"challenge":         encodeChallenge(challengeBytes),
+				"signature":         encodeSignature(signatureBytes),
+				"permission_levels": permissions,
+			}
+			bodyBytes, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			bodyReader := bytes.NewBuffer(bodyBytes)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/bento/share", serviceUrl), bodyReader)
+			if err != nil {
+				return err
+			}
+			req.Header.Add(header_content_type, header_mime_json)
+			req.Header.Add(header_content_length, strconv.Itoa(len(bodyBytes)))
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", creds.AccessToken))
+
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBody, err := readApiResponseBody(res.Body)
+			if err != nil {
+				return err
+			}
+			logApiResponseBody(resBody)
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringP("permissions", "p", "", "Optional: desired permission levels to give the receiving user.")
+
 	return cmd
 }
