@@ -36,7 +36,7 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newPrepareBentoCmd())
 	cmd.AddCommand(newFillBentoCmd())
 	cmd.AddCommand(newThrowBentoCmd())
-	cmd.AddCommand(newShareBentoCmd())
+	cmd.AddCommand(newAllowEditCmd())
 
 	// sub commands
 	cmd.AddCommand(newIngridientCmd())
@@ -592,11 +592,11 @@ func newThrowBentoCmd() *cobra.Command {
 	return cmd
 }
 
-func newShareBentoCmd() *cobra.Command {
+func newAllowEditCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "share <share-to-email> [--permissions=]",
-		Short: "Share an existing bento to another user. Sharing its not allowing read. Sharing mean to allow editing an existing bento.",
-		Long:  "Share an existing bento to another user. Sharing its not allowing read. Sharing mean to allow editing an existing bento. Permissions is a comma separated string of options: all,write,delete,share,rename_bento,rename_ingridient,write_ingridient,delete_ingridient,revoke_share. One can only grant up to their own permission level.",
+		Use:   "allow-edit <share-to-email> [--permissions=]",
+		Short: "Allow edit of an existing bento to another user.",
+		Long:  "Allow edit of an existing bento to another user. Permissions is a comma separated string of options: all,write,delete,share,rename_bento,rename_ingridient,write_ingridient,delete_ingridient,revoke_share. One can only grant up to their own permission level.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serviceUrl := config.GetServiceURL()
@@ -655,7 +655,7 @@ func newShareBentoCmd() *cobra.Command {
 			}
 			bodyReader := bytes.NewBuffer(bodyBytes)
 
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/bento/share", serviceUrl), bodyReader)
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/bento/edit/allow", serviceUrl), bodyReader)
 			if err != nil {
 				return err
 			}
