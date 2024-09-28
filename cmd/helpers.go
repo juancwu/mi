@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -231,6 +232,26 @@ func parsePrivateKey(block *pem.Block) (*rsa.PrivateKey, error) {
 	return pk, nil
 }
 
+func parsePrivateKeyFromPath(keyPath string) (*rsa.PrivateKey, error) {
+	block, err := readPEMKey(keyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if block.Type != "PRIVATE KEY" {
+		return nil, fmt.Errorf("Unsupported private key. Expected type: 'PRIVATE KEY', but found: '%s'", block.Type)
+	}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	pk, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("Failed to parse private key.")
+	}
+	return pk, nil
+}
+
 // parsePublicKey parses a public key in PEM format.
 func parsePublicKey(block *pem.Block) (*rsa.PublicKey, error) {
 	if block.Type != "PUBLIC KEY" {
@@ -342,4 +363,20 @@ func readEnvFile(path string) ([]ingridient, error) {
 		}
 	}
 	return envs, nil
+}
+
+// Creates a new challenger with hex encoded challenge and signature
+func newChallenger(pk *rsa.PrivateKey) (*challengerType, error) {
+	challengeBytes, err := createChallenge()
+	if err != nil {
+		return nil, err
+	}
+	signatureBytes, err := signChallenge(pk, sha256.Sum256(challengeBytes))
+	if err != nil {
+		return nil, err
+	}
+	return &challengerType{
+		Challenge: encodeChallenge(challengeBytes),
+		Signature: encodeSignature(signatureBytes),
+	}, nil
 }

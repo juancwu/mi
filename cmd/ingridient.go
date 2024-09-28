@@ -3,13 +3,17 @@ package cmd
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"syscall"
 
 	"github.com/juancwu/mi/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func newIngridientCmd() *cobra.Command {
@@ -18,6 +22,7 @@ func newIngridientCmd() *cobra.Command {
 		Short: "Bento ingridient related commands. Rename, change value, and delete.",
 	}
 	cmd.AddCommand(newRenameCmd())
+	cmd.AddCommand(newReseasonCmd())
 	return cmd
 }
 
@@ -104,5 +109,96 @@ func newRenameCmd() *cobra.Command {
 			return nil
 		},
 	}
+	return cmd
+}
+
+func newReseasonCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "reseason <name>",
+		Short: "Changes the value of an ingridient.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			creds, err := config.LoadCredentials()
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Please sign-in using 'mi auth signin'.")
+					return nil
+				}
+				return err
+			}
+			cfg, err := config.LoadConfiguration()
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("Could not find '.miconfig.yaml' in the current working directory.")
+					return nil
+				}
+				return err
+			}
+
+			// parse private key
+			pk, err := parsePrivateKeyFromPath(cfg.PrivateKeyPath)
+			if err != nil {
+				return err
+			}
+
+			if err := getNewAccessToken(creds); err != nil {
+				return err
+			}
+
+			challenger, err := newChallenger(pk)
+			if err != nil {
+				return err
+			}
+
+			// read in secret value
+			fmt.Print("Enter secret seasoning: ")
+			secret, err := term.ReadPassword(syscall.Stdin)
+			if err != nil {
+				return err
+			}
+			fmt.Print("\n")
+
+			// encrypt secret
+			encryptedSecret, err := encryptValue(&pk.PublicKey, secret)
+			if err != nil {
+				return err
+			}
+
+			body := reseasonIngridientRequest{
+				BentoId:    cfg.BentoId,
+				Challenger: *challenger,
+				Name:       name,
+				Value:      hex.EncodeToString(encryptedSecret),
+			}
+			bodyBytes, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			readBuffer := bytes.NewBuffer(bodyBytes)
+			serviceUrl := config.GetServiceURL()
+			req, err := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/bento/ingridient/reseason", serviceUrl), readBuffer)
+			if err != nil {
+				return err
+			}
+			req.Header.Add(header_content_type, header_mime_json)
+			req.Header.Add(header_content_length, strconv.Itoa(len(bodyBytes)))
+			req.Header.Add(header_authorization, fmt.Sprintf("Bearer %s", creds.AccessToken))
+			client := http.Client{}
+			res, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			resBody, err := readApiResponseBody(res.Body)
+			if err != nil {
+				return err
+			}
+			logApiResponseBody(resBody)
+
+			return nil
+		},
+	}
+
 	return cmd
 }
