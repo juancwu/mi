@@ -10,9 +10,12 @@ import (
 )
 
 // readEmail is a helper function that will prompt the user to enter their email and read it.
-func readEmail() (string, error) {
+func readEmail(prompt string) (string, error) {
+	if len(prompt) == 0 {
+		prompt = "Enter your email: "
+	}
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter your email: ")
+	fmt.Print(prompt)
 	email, err := reader.ReadString('\n')
 	if err != nil {
 		return "", err

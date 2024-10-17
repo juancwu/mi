@@ -39,6 +39,7 @@ func newAuthCmd() *cobra.Command {
 	cmd.AddCommand(newVerifyEmailCmd())
 	cmd.AddCommand(newResetPasswordCmd())
 	cmd.AddCommand(newDeleteAccountCmd())
+	cmd.AddCommand(newUpdateEmailCmd())
 	return cmd
 }
 
@@ -124,7 +125,7 @@ func newSigninCmd() *cobra.Command {
 		Use:   "signin",
 		Short: "Signin to a Konbini account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			email, err := readEmail()
+			email, err := readEmail("")
 			if err != nil {
 				return err
 			}
@@ -363,5 +364,81 @@ func newDeleteAccountCmd() *cobra.Command {
 			return nil
 		},
 	}
+	return cmd
+}
+
+func newUpdateEmailCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update-email [--email,--new-email]",
+		Short: "Updates the email of an existing user.",
+		Long:  "Updates the email of an existing user. Must provide current credentials to update email.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			email, err := cmd.Flags().GetString("email")
+			if err != nil {
+				return err
+			}
+			newEmail, err := cmd.Flags().GetString("new-email")
+			if err != nil {
+				return err
+			}
+			if len(email) == 0 {
+				// ask for email
+				email, err = readEmail("")
+				if err != nil {
+					return err
+				}
+			}
+			if len(newEmail) == 0 {
+				// ask for new email
+				newEmail, err = readEmail("Enter new email: ")
+				if err != nil {
+					return err
+				}
+			}
+			// ask for password for authentication
+			password, err := readPassword()
+			if err != nil {
+				return err
+			}
+			res, err := util.SignIn(email, password)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
+			if res.StatusCode == http.StatusOK {
+				// make request with the obtained access token
+				var c config.Credentials
+				b, err := io.ReadAll(res.Body)
+				if err != nil {
+					return err
+				}
+				err = json.Unmarshal(b, &c)
+				if err != nil {
+					return err
+				}
+				updateRes, err := util.UpdateEmail(newEmail, c.AccessToken)
+				if err != nil {
+					return err
+				}
+				defer updateRes.Body.Close()
+				apiResp, err := readApiResponseBody(updateRes.Body)
+				if err != nil {
+					return err
+				}
+				logApiResponseBody(apiResp)
+			} else {
+				apiResp, err := readApiResponseBody(res.Body)
+				if err != nil {
+					return err
+				}
+				logApiResponseBody(apiResp)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().String("email", "", "The current email to the account you want to change.")
+	cmd.Flags().String("new-email", "", "The new email to be set for the account.")
+
 	return cmd
 }
