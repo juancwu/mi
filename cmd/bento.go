@@ -39,9 +39,6 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newAllowEditCmd())
 	cmd.AddCommand(newRevokeEditCmd())
 
-	// sub commands
-	cmd.AddCommand(newIngridientCmd())
-
 	return cmd
 }
 

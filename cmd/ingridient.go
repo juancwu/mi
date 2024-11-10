@@ -18,7 +18,7 @@ import (
 
 func newIngridientCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ingridient",
+		Use:   "ing",
 		Short: "Bento ingridient related commands. Rename, change value, and delete.",
 	}
 	cmd.AddCommand(newRenameCmd())
