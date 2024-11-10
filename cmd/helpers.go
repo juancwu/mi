@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"github.com/juancwu/mi/config"
 	"github.com/juancwu/mi/text"
 	"github.com/juancwu/mi/util"
@@ -100,7 +101,6 @@ func logApiResponseBody(resBody *apiResponse) {
 		fmt.Printf("Message: %s\n", resBody.Message)
 	}
 	if resBody.RequestId != "" {
-
 		fmt.Printf("Request ID: %s\n", resBody.RequestId)
 	}
 	if len(resBody.Errs) > 0 {
@@ -334,33 +334,16 @@ func readEnvFile(path string) ([]ingridient, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := io.ReadAll(f)
+	values, err := godotenv.Parse(f)
 	if err != nil {
 		return nil, err
 	}
 	var envs []ingridient
-	var c byte
-	eqIdx := -1
-	for start, end := 0, 0; end < len(b); end++ {
-		c = b[end]
-		switch c {
-		case ascii_equal:
-			if eqIdx == -1 {
-				eqIdx = end
-			}
-		case ascii_linefeed:
-			env := ingridient{
-				// grab the key of the ingridient
-				Name: string(b[start:eqIdx]),
-				// grab the string after the first "=" to the end
-				Value: string(b[eqIdx+1 : end]),
-			}
-			// reset the equal idx
-			eqIdx = -1
-			// move the start point
-			start = end + 1
-			envs = append(envs, env)
-		}
+	for key, value := range values {
+		envs = append(envs, ingridient{
+			Name:  key,
+			Value: value,
+		})
 	}
 	return envs, nil
 }
