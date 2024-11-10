@@ -19,6 +19,7 @@ func newRootCmd(version string) *cobra.Command {
 
 	cmd.AddCommand(newAuthCmd())
 	cmd.AddCommand(newBentoCmd())
+	cmd.AddCommand(newUpdateCmd())
 
 	return cmd
 }
