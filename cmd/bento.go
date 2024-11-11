@@ -36,8 +36,8 @@ func newBentoCmd() *cobra.Command {
 	cmd.AddCommand(newPrepareBentoCmd())
 	cmd.AddCommand(newFillBentoCmd())
 	cmd.AddCommand(newThrowBentoCmd())
-	cmd.AddCommand(newAllowEditCmd())
-	cmd.AddCommand(newRevokeEditCmd())
+	cmd.AddCommand(newShareCmd())
+	cmd.AddCommand(newUnshareCmd())
 
 	return cmd
 }
@@ -590,9 +590,9 @@ func newThrowBentoCmd() *cobra.Command {
 	return cmd
 }
 
-func newAllowEditCmd() *cobra.Command {
+func newShareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "allow-edit <share-to-email> [--permissions=]",
+		Use:   "share <share-to-email> [--permissions=]",
 		Short: "Allow edit of an existing bento to another user.",
 		Long:  "Allow edit of an existing bento to another user. Permissions is a comma separated string of options: all,write,delete,share,rename_bento,rename_ingridient,write_ingridient,delete_ingridient,revoke_share. One can only grant up to their own permission level.",
 		Args:  cobra.ExactArgs(1),
@@ -682,9 +682,9 @@ func newAllowEditCmd() *cobra.Command {
 	return cmd
 }
 
-func newRevokeEditCmd() *cobra.Command {
+func newUnshareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "revoke-edit <email> [--permissions]",
+		Use:   "unshare <email> [--permissions]",
 		Short: "Removes a user from getting edit access to a bento.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
